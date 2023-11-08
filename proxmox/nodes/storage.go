@@ -289,3 +289,91 @@ func (c *Client) APIUpload(
 
 	return resBody, nil
 }
+
+func (c *Client) DownloadURL(
+	ctx context.Context,
+	datastoreID string,
+	d *DownloadURLRequestBody,
+	overwrite bool,
+	timeoutSeconds int,
+) (*DownloadURLResponseBody, error) {
+	fields := map[string]interface{}{
+		"file_url": d.URL,
+		"storage":  datastoreID,
+		"content":  d.Content,
+		"filename": d.Filename,
+		"node":     d.Node,
+	}
+	tflog.Debug(ctx, "Downloading template or ISO via PVE API", fields)
+	tflog.Debug(ctx, "Checking which files already exist", fields)
+
+	files, err := c.ListDatastoreFiles(ctx, datastoreID)
+	if err != nil {
+		tflog.Error(ctx, "error listing files in datastore", map[string]interface{}{
+			"error": err,
+		})
+		return nil, fmt.Errorf("failed to list files in datastore %s - %w", datastoreID, err)
+	}
+	// TODO: there's likely an existing util for this
+	volumeID := fmt.Sprintf("%s:%s/%s", d.Storage, d.Content, d.Filename)
+
+	for _, file := range files {
+		if file.VolumeID == volumeID {
+			tflog.Debug(ctx, "File already exists in datastore", fields)
+			if overwrite {
+				tflog.Debug(ctx, "Overwrite was set to `true`, deleting existing file", fields)
+				err := c.DeleteDatastoreFile(ctx, datastoreID, file.VolumeID)
+				if err != nil {
+					tflog.Error(ctx, "error deleting existing file", map[string]interface{}{
+						"error": err,
+					})
+					return nil, fmt.Errorf("failed to delete existing file %s in datastore %s - %w", volumeID, datastoreID, err)
+				}
+			} else {
+				return nil, fmt.Errorf("file %s already exists in datastore %s", volumeID, datastoreID)
+			}
+		}
+	}
+
+	tflog.Debug(ctx, "Proceeding with download", fields)
+
+	r := &DownloadURLResponseBody{}
+	err = c.DoRequest(
+		ctx,
+		http.MethodPost,
+		c.ExpandPath(
+			fmt.Sprintf(
+				"storage/%s/download-url",
+				url.PathEscape(datastoreID),
+			),
+		),
+		&d,
+		r,
+	)
+
+	if err != nil {
+		tflog.Error(ctx, "error downloading template or ISO to datastore", map[string]interface{}{
+			"error": err,
+		})
+		return r, err
+	}
+
+	if r.UploadID == nil {
+		tflog.Error(ctx, "error downloading template or ISO to datastore", map[string]interface{}{
+			"error": "no data object in response",
+		})
+		return r, api.ErrNoDataObjectInResponse
+	}
+
+	err = c.Tasks().WaitForTask(ctx, *r.UploadID, timeoutSeconds, 5)
+	if err != nil {
+		tflog.Error(ctx, "error downloading template or ISO to datastore", map[string]interface{}{
+			"error": err,
+		})
+		return r, fmt.Errorf("failed waiting for download task - %w", err)
+	}
+
+	tflog.Debug(ctx, "Downloaded template or ISO to PVE API", fields)
+
+	return r, nil
+}

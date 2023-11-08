@@ -19,7 +19,7 @@ type DatastoreFileListResponseBody struct {
 type DatastoreFileListResponseData struct {
 	ContentType    string  `json:"content"`
 	FileFormat     string  `json:"format"`
-	FileSize       int     `json:"size"`
+	FileSize       int64   `json:"size"`
 	ParentVolumeID *string `json:"parent,omitempty"`
 	SpaceUsed      *int    `json:"used,omitempty"`
 	VMID           *int    `json:"vmid,omitempty"`
@@ -73,5 +73,19 @@ type DatastoreListResponseData struct {
 
 // DatastoreUploadResponseBody contains the body from a datastore upload response.
 type DatastoreUploadResponseBody struct {
+	UploadID *string `json:"data,omitempty"`
+}
+
+// DownloadURLRequestBody contains the body for a datastore download URL request.
+type DownloadURLRequestBody struct {
+	Content  string `json:"content,omitempty" url:"content,omitempty"` // iso | vztmpl
+	Filename string `json:"filename,omitempty" url:"filename,omitempty"`
+	Node     string `json:"node,omitempty" url:"node,omitempty"`
+	Storage  string `json:"storage,omitempty" url:"storage,omitempty"`
+	URL      string `json:"url,omitempty" url:"url,omitempty"`
+}
+
+// DownloadURLResponseBody contains the body from a datastore download URL response.
+type DownloadURLResponseBody struct {
 	UploadID *string `json:"data,omitempty"`
 }
