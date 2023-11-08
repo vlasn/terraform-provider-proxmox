@@ -75,3 +75,17 @@ type DatastoreListResponseData struct {
 type DatastoreUploadResponseBody struct {
 	UploadID *string `json:"data,omitempty"`
 }
+
+// DownloadURLRequestBody contains the body for a datastore download URL request.
+type DownloadURLRequestBody struct {
+	Content  string `json:"content,omitempty" url:"content,omitempty"` // iso | vztmpl
+	Filename string `json:"filename,omitempty" url:"filename,omitempty"`
+	Node     string `json:"node,omitempty" url:"node,omitempty"`
+	Storage  string `json:"storage,omitempty" url:"storage,omitempty"`
+	URL      string `json:"url,omitempty" url:"url,omitempty"`
+}
+
+// DownloadURLResponseBody contains the body from a datastore download URL response.
+type DownloadURLResponseBody struct {
+	UploadID *string `json:"data,omitempty"`
+}
